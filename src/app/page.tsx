@@ -33,6 +33,7 @@ export default async function Home() {
             {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
           </p>
         </div>
+        <Link href="/log" className="label text-accent">＋ check-in</Link>
       </header>
 
       {!d.configured && (
@@ -93,7 +94,7 @@ export default async function Home() {
       <section className="card">
         <div className="mb-3 flex items-center justify-between">
           <p className="label">Today&apos;s food</p>
-          <Link href="/log" className="label text-accent">+ log a meal</Link>
+          <Link href="/nutrition" className="label text-accent">+ log a meal</Link>
         </div>
         <div className="mb-3 grid grid-cols-4 gap-2 text-center">
           <Macro label="kcal" value={Math.round(d.macros.calories)} />

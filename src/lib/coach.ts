@@ -1,5 +1,7 @@
 import { admin } from "./supabase";
 import { anthropic, MODEL } from "./anthropic";
+import { getTargets } from "./nutrition";
+import { getWeekStats } from "./training";
 
 // Gathers recent data and asks Claude for a daily coaching brief.
 
@@ -14,8 +16,8 @@ Context on the athlete you must always respect:
 Write a SHORT daily brief (120-220 words) in markdown. Structure:
 - A one-line headline on how today looks.
 - 2-4 sentences interpreting today's recovery/sleep and recent training & nutrition trends.
-- A clear recommendation for today's session (adjust intensity/volume to recovery; if recovery is low, say so and scale back).
-- One small nutrition or habit nudge.
+- A clear recommendation for today's session (adjust intensity/volume to recovery; if recovery is low, say so and scale back). Use weekly_training_stats to note if volume is tracking the Chicago plan.
+- One small nutrition nudge grounded in nutrition_targets (daily kcal/protein goal for ~0.7kg/week loss) and what's been logged — e.g. protein short, portion creep, or fuel up before a long run.
 Be specific and reference the actual numbers you're given. Never invent data you weren't given. Avoid hype and avoid bullet-point overload.`;
 
 export async function buildDailyBrief(): Promise<{ title: string; body: string }> {
@@ -33,9 +35,13 @@ export async function buildDailyBrief(): Promise<{ title: string; body: string }
     db.from("training_plan").select("*").gte("day_date", today).order("day_date", { ascending: true }).limit(3),
   ]);
 
+  const [targets, weekStats] = await Promise.all([getTargets(), getWeekStats()]);
+
   const context = {
     today,
     profile: profile.data ?? null,
+    nutrition_targets: targets,
+    weekly_training_stats: weekStats,
     recent_daily_metrics: metrics.data ?? [],
     workouts_last_7d: workouts.data ?? [],
     meals_last_3d: meals.data ?? [],
