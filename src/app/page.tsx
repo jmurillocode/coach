@@ -50,7 +50,7 @@ export default async function Home() {
         <div className="mb-3 flex items-center justify-between">
           <p className="label">Today&apos;s readiness</p>
           {!d.whoopConnected && (
-            <Link href="/api/whoop/auth" className="label text-accent">connect Whoop →</Link>
+            <a href="/api/whoop/auth" className="label text-accent">connect Whoop →</a>
           )}
         </div>
         {m ? (
