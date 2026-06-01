@@ -7,6 +7,9 @@ const PUBLIC_PATHS = [
   "/login",
   "/api/login",
   "/api/cron",
+  // OAuth callback comes from whoop.com (cross-site) so the app session cookie
+  // isn't reliable here. It's protected by the OAuth `state` check instead.
+  "/api/whoop/callback",
   "/manifest.json",
   "/icons",
   "/favicon.ico",
