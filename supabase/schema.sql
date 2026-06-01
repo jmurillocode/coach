@@ -1,8 +1,9 @@
 -- Coach — Supabase schema (single-user)
 -- Run this in the Supabase SQL editor once.
 -- This app is single-user and only ever talks to the DB from the server using the
--- service-role key, so Row Level Security is intentionally left OFF. Do NOT expose
--- the service-role key to the browser.
+-- service-role key (which BYPASSES Row Level Security). We still ENABLE RLS on every
+-- table with no policies, which locks out the public anon/authenticated keys while the
+-- server keeps full access. Do NOT expose the service-role key to the browser.
 
 -- ── Athlete profile (single row, id = 1) ───────────────────────────────────
 create table if not exists profile (
@@ -138,6 +139,17 @@ create index if not exists idx_workouts_start on workouts (start_time desc);
 create index if not exists idx_meals_eaten on meals (eaten_at desc);
 create index if not exists idx_journal_entry on journal_entries (entry_at desc);
 create index if not exists idx_briefs_date on coaching_briefs (brief_date desc);
+
+-- Enable RLS on every table (no policies = anon/authenticated locked out; the
+-- server's service-role key bypasses RLS and retains full access).
+alter table profile           enable row level security;
+alter table integrations      enable row level security;
+alter table daily_metrics     enable row level security;
+alter table workouts          enable row level security;
+alter table meals             enable row level security;
+alter table journal_entries   enable row level security;
+alter table training_plan     enable row level security;
+alter table coaching_briefs   enable row level security;
 
 -- Seed the single profile row (edit values to taste).
 insert into profile (id, name, dob, height_cm, weight_kg, goal, race_date, context)
