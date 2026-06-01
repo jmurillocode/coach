@@ -30,3 +30,9 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# local secrets / notes — NEVER commit
+APIs and Passwords
+*secrets*
+*.secret
+notes.md
