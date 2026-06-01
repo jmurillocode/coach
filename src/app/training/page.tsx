@@ -1,11 +1,12 @@
 import { admin } from "@/lib/supabase";
 import { isConfigured } from "@/lib/data";
-import { getTodayNext, getWeekStats, getWeekPlan } from "@/lib/training";
+import { getTodayNext, getWeekStats, getWeekPlan, getWeeklyVolumeSeries } from "@/lib/training";
+import { MiniBars } from "@/components/charts";
 
 export const dynamic = "force-dynamic";
 
-const ICON: Record<string, string> = {
-  easy: "🟢", long: "🔵", workout: "🟡", strength: "🟠", cross: "🚲", rest: "⚪",
+const DOT: Record<string, string> = {
+  easy: "#46E5A0", long: "#4FD3E0", workout: "#F5B544", strength: "#C58BF0", cross: "#8A949E", rest: "#3A434D",
 };
 
 function fmtPace(s: number | null): string {
@@ -24,19 +25,20 @@ function Session({ s, dim = false }: { s: any; dim?: boolean }) {
   if (d.strides) extras.push(d.strides);
   if (d.exercises) extras.push((d.exercises as string[]).join(" · "));
   if (d.minutes) extras.push(`${d.minutes} min`);
+  if (d.goal) extras.push(d.goal);
   return (
-    <div className={`${dim ? "opacity-70" : ""}`}>
+    <div className={dim ? "opacity-60" : ""}>
       <div className="flex items-center justify-between">
-        <span className="text-sm">
-          <span className="mr-1">{ICON[s.session_type] ?? "•"}</span>
+        <span className="flex items-center gap-2 text-sm">
+          <span className="h-2 w-2 rounded-full" style={{ background: DOT[s.session_type] ?? "#8A949E" }} />
           {s.title ?? s.session_type}
         </span>
-        <span className="text-xs text-muted">
+        <span className="num text-xs text-muted">
           {s.planned_distance_km ? `${s.planned_distance_km}km` : ""} {s.target_pace ?? ""}
         </span>
       </div>
-      {extras.length > 0 && <p className="mt-1 pl-5 text-xs text-muted">{extras.join(" · ")}</p>}
-      {s.coach_note && <p className="mt-1 pl-5 text-xs text-[#c9d4e0]">{s.coach_note}</p>}
+      {extras.length > 0 && <p className="mt-1 pl-4 text-xs text-muted">{extras.join(" · ")}</p>}
+      {s.coach_note && <p className="mt-1 pl-4 text-xs text-dim">{s.coach_note}</p>}
     </div>
   );
 }
@@ -51,78 +53,90 @@ export default async function Training() {
     );
   }
 
-  const [{ today, tomorrow }, stats, weekPlan, recent] = await Promise.all([
+  const [{ today, tomorrow }, stats, weekPlan, volume, recent] = await Promise.all([
     getTodayNext(),
     getWeekStats(),
     getWeekPlan(),
+    getWeeklyVolumeSeries(),
     admin().from("workouts").select("*").order("start_time", { ascending: false }).limit(6),
   ]);
   const phase = (today[0]?.details?.phase as string) || (weekPlan[0]?.details?.phase as string) || "";
   const recentWorkouts = recent.data ?? [];
+  const peak = volume.weeks.length ? Math.max(...volume.weeks.map((w) => w.km)) : 0;
+  const thisWeekPlanned = volume.currentIndex >= 0 ? volume.weeks[volume.currentIndex]?.km ?? 0 : 0;
 
   return (
-    <main className="space-y-4 px-4 pt-6">
+    <main className="space-y-3 px-4 pt-6">
       <header>
         <h1 className="text-2xl font-semibold">Training</h1>
-        {phase && <p className="text-sm text-muted">{phase} · Chicago Oct 11</p>}
+        {phase && <p className="mlab mt-0.5">{phase} · Chicago Oct 11</p>}
       </header>
+
+      {/* Build arc */}
+      {volume.weeks.length > 0 && (
+        <section className="card">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="mlab">The build → Chicago</span>
+            <span className="mlab">{peak}km peak</span>
+          </div>
+          <MiniBars data={volume.weeks.map((w) => w.km)} highlight={volume.currentIndex} />
+        </section>
+      )}
 
       {/* Weekly rollup */}
       <section className="card">
-        <p className="label mb-3">This week</p>
-        <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="mlab">This week — actual</span>
+          {thisWeekPlanned > 0 && <span className="mlab">plan {thisWeekPlanned}km</span>}
+        </div>
+        <div className="grid grid-cols-3 gap-2">
           <Metric value={`${stats.distance_km}`} unit="km" />
-          <Metric value={`${Math.floor(stats.duration_min / 60)}h ${stats.duration_min % 60}m`} unit="time" />
+          <Metric value={`${Math.floor(stats.duration_min / 60)}:${(stats.duration_min % 60).toString().padStart(2, "0")}`} unit="hours" />
           <Metric value={`${stats.sessions}`} unit="sessions" />
-          <Metric value={stats.calories ? `${stats.calories}` : "—"} unit="kcal" />
+          <Metric value={stats.calories ? `${(stats.calories / 1000).toFixed(1)}k` : "—"} unit="kcal" />
           <Metric value={stats.avg_hr ? `${stats.avg_hr}` : "—"} unit="avg hr" />
-          <Metric value={`${stats.by_sport.running?.km ? Math.round(stats.by_sport.running.km) : 0}`} unit="run km" />
+          <Metric value={`${Math.round(stats.by_sport.running?.km ?? 0)}`} unit="run km" />
         </div>
       </section>
 
-      {/* Today */}
+      {/* Today / tomorrow */}
       <section className="card">
-        <p className="label mb-3">Today</p>
-        {today.length === 0 ? <p className="text-sm text-muted">Rest / nothing planned.</p> : (
-          <div className="space-y-3">{today.map((s) => <Session key={s.id} s={s} />)}</div>
-        )}
+        <span className="mlab">Today</span>
+        <div className="mt-2">
+          {today.length === 0 ? <p className="text-sm text-muted">Rest / nothing planned.</p> : <div className="space-y-3">{today.map((s) => <Session key={s.id} s={s} />)}</div>}
+        </div>
+      </section>
+      <section className="card">
+        <span className="mlab">Tomorrow</span>
+        <div className="mt-2">
+          {tomorrow.length === 0 ? <p className="text-sm text-muted">Rest / nothing planned.</p> : <div className="space-y-3">{tomorrow.map((s) => <Session key={s.id} s={s} dim />)}</div>}
+        </div>
       </section>
 
-      {/* Tomorrow */}
+      {/* Week plan */}
       <section className="card">
-        <p className="label mb-3">Tomorrow</p>
-        {tomorrow.length === 0 ? <p className="text-sm text-muted">Rest / nothing planned.</p> : (
-          <div className="space-y-3">{tomorrow.map((s) => <Session key={s.id} s={s} dim />)}</div>
-        )}
-      </section>
-
-      {/* This week's plan */}
-      <section className="card">
-        <p className="label mb-3">This week&apos;s plan</p>
+        <span className="mlab mb-3 block">This week&apos;s plan</span>
         <div className="space-y-3">
           {weekPlan.map((s) => (
             <div key={s.id} className="flex gap-3">
-              <span className="w-9 shrink-0 text-xs text-muted">
-                {new Date(s.day_date).toLocaleDateString(undefined, { weekday: "short" })}
-              </span>
+              <span className="mlab w-8 shrink-0 pt-0.5">{new Date(s.day_date).toLocaleDateString(undefined, { weekday: "short" })}</span>
               <div className="flex-1"><Session s={s} /></div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Recent workouts */}
+      {/* Logged workouts */}
       {recentWorkouts.length > 0 && (
         <section className="card">
-          <p className="label mb-3">Logged workouts</p>
+          <span className="mlab mb-3 block">Logged workouts</span>
           <ul className="space-y-2">
             {recentWorkouts.map((w) => (
               <li key={w.id} className="flex items-center justify-between text-sm">
                 <span className="capitalize">
-                  {w.sport ?? "workout"}{" "}
-                  <span className="text-muted">{new Date(w.start_time).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                  {w.sport ?? "workout"} <span className="text-muted">{new Date(w.start_time).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
                 </span>
-                <span className="text-xs text-muted">
+                <span className="num text-xs text-muted">
                   {w.distance_m ? `${(w.distance_m / 1000).toFixed(1)}km` : ""} {fmtPace(w.avg_pace_s_per_km)} {w.avg_hr ? `· ${w.avg_hr}bpm` : ""}
                 </span>
               </li>
@@ -136,9 +150,9 @@ export default async function Training() {
 
 function Metric({ value, unit }: { value: string; unit: string }) {
   return (
-    <div className="rounded-xl border border-edge py-2">
-      <div className="text-lg font-semibold">{value}</div>
-      <div className="text-[10px] uppercase tracking-wide text-muted">{unit}</div>
+    <div className="rounded-xl border border-edge py-2 text-center">
+      <div className="num text-xl">{value}</div>
+      <div className="mlab mt-0.5">{unit}</div>
     </div>
   );
 }

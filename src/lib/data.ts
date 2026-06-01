@@ -1,4 +1,5 @@
 import { admin } from "./supabase";
+import { getWeeklyVolumeSeries, type VolumeSeries } from "./training";
 
 export function isConfigured(): boolean {
   return Boolean(
@@ -17,6 +18,8 @@ export type Dashboard = {
   macros: { calories: number; protein: number; carbs: number; fat: number };
   upcoming: any[];
   recentWorkouts: any[];
+  recentMetrics: any[];
+  volume: VolumeSeries;
 };
 
 export async function getDashboard(): Promise<Dashboard> {
@@ -29,6 +32,8 @@ export async function getDashboard(): Promise<Dashboard> {
     macros: { calories: 0, protein: 0, carbs: 0, fat: 0 },
     upcoming: [],
     recentWorkouts: [],
+    recentMetrics: [],
+    volume: { weeks: [], currentIndex: -1 },
   };
   if (!isConfigured()) return empty;
 
@@ -37,13 +42,15 @@ export async function getDashboard(): Promise<Dashboard> {
     const today = new Date().toISOString().slice(0, 10);
     const startOfDay = `${today}T00:00:00.000Z`;
 
-    const [metric, brief, meals, plan, whoop, workouts] = await Promise.all([
+    const [metric, brief, meals, plan, whoop, workouts, metrics14, volume] = await Promise.all([
       db.from("daily_metrics").select("*").order("metric_date", { ascending: false }).limit(1).maybeSingle(),
       db.from("coaching_briefs").select("*").eq("kind", "daily").order("brief_date", { ascending: false }).limit(1).maybeSingle(),
       db.from("meals").select("*").gte("eaten_at", startOfDay).order("eaten_at", { ascending: false }),
       db.from("training_plan").select("*").gte("day_date", today).order("day_date", { ascending: true }).limit(3),
       db.from("integrations").select("provider").eq("provider", "whoop").maybeSingle(),
       db.from("workouts").select("*").order("start_time", { ascending: false }).limit(5),
+      db.from("daily_metrics").select("metric_date, recovery_score, hrv_rmssd_ms").order("metric_date", { ascending: false }).limit(14),
+      getWeeklyVolumeSeries(),
     ]);
 
     const todaysMeals = meals.data ?? [];
@@ -66,6 +73,8 @@ export async function getDashboard(): Promise<Dashboard> {
       macros,
       upcoming: plan.data ?? [],
       recentWorkouts: workouts.data ?? [],
+      recentMetrics: (metrics14.data ?? []).slice().reverse(),
+      volume,
     };
   } catch {
     return { ...empty, configured: isConfigured() };

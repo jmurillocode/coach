@@ -8,20 +8,30 @@
 
 html,
 body {
-  background: #0e1116;
-  color: #e6edf3;
+  background: #0b0e12;
+  color: #e8edf2;
   -webkit-font-smoothing: antialiased;
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Respect iOS safe areas when installed as a PWA */
 body {
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+@layer base {
+  h1, h2, h3 {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+}
+
 @layer components {
   .card {
     @apply rounded-2xl border border-edge bg-panel p-4;
+  }
+  .card-accent {
+    @apply rounded-2xl border border-edge border-l-2 border-l-accent bg-panel p-4;
   }
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium transition active:scale-[0.98];
@@ -32,7 +42,19 @@ body {
   .btn-ghost {
     @apply btn border border-edge bg-transparent text-white;
   }
-  .label {
-    @apply text-xs uppercase tracking-wide text-muted;
+  .label,
+  .mlab {
+    @apply text-[10px] font-medium uppercase tracking-[0.14em] text-muted;
+  }
+  .num {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .disp {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 }

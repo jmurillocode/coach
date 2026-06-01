@@ -74,6 +74,28 @@ export async function getTodayNext() {
   };
 }
 
+export type VolumeSeries = { weeks: { week_start: string; km: number }[]; currentIndex: number };
+
+// Planned weekly volume across the whole plan (the build "arc").
+export async function getWeeklyVolumeSeries(): Promise<VolumeSeries> {
+  const { data } = await admin()
+    .from("training_plan")
+    .select("day_date, planned_distance_km")
+    .order("day_date", { ascending: true });
+  const byWeek = new Map<string, number>();
+  for (const r of data ?? []) {
+    if (!r.planned_distance_km) continue;
+    const wk = mondayOf(new Date(`${r.day_date}T00:00:00.000Z`));
+    byWeek.set(wk, (byWeek.get(wk) ?? 0) + Number(r.planned_distance_km));
+  }
+  const weeks = [...byWeek.entries()]
+    .map(([week_start, km]) => ({ week_start, km: Math.round(km) }))
+    .sort((a, b) => a.week_start.localeCompare(b.week_start));
+  const cur = mondayOf();
+  const currentIndex = weeks.findIndex((w) => w.week_start === cur);
+  return { weeks, currentIndex };
+}
+
 export async function getWeekPlan(weekStartISO?: string) {
   const start = weekStartISO ?? mondayOf();
   const endDate = new Date(`${start}T00:00:00.000Z`);

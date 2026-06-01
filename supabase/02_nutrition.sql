@@ -10,12 +10,19 @@ create table if not exists nutrition_targets (
   maintenance_kcal int,
   deficit_kcal     int,
   weekly_loss_kg   numeric,
+  start_weight_kg  numeric,
+  start_date       date,
+  goal_weight_kg   numeric,
   rationale        text,
   updated_at       timestamptz default now(),
   constraint nutrition_targets_singleton check (id = 1)
 );
 
 alter table nutrition_targets enable row level security;
+-- idempotent: add weight-goal columns if the table already existed
+alter table nutrition_targets add column if not exists start_weight_kg numeric;
+alter table nutrition_targets add column if not exists start_date date;
+alter table nutrition_targets add column if not exists goal_weight_kg numeric;
 
 -- Meals: allow text-based entries (no photo) alongside photo entries.
 alter table meals add column if not exists entry_method text default 'photo'; -- 'photo' | 'text'
@@ -24,9 +31,9 @@ alter table meals add column if not exists title text;                        --
 -- Seed Jon's targets: ~0.7 kg/week loss while fuelling marathon training.
 -- Maintenance ~2950 (95kg, very active in a build); ~650 kcal/day deficit.
 -- Protein high to preserve lean mass in a deficit; carbs prioritised around training.
-insert into nutrition_targets (id, daily_kcal, protein_g, carbs_g, fat_g, maintenance_kcal, deficit_kcal, weekly_loss_kg, rationale)
+insert into nutrition_targets (id, daily_kcal, protein_g, carbs_g, fat_g, maintenance_kcal, deficit_kcal, weekly_loss_kg, start_weight_kg, start_date, goal_weight_kg, rationale)
 values (
-  1, 2300, 185, 232, 70, 2950, 650, 0.7,
+  1, 2300, 185, 232, 70, 2950, 650, 0.7, 95, '2026-06-01', 85,
   'Ambitious-but-reasonable cut: ~0.7 kg/week. Eases as mileage peaks — add ~300-400 kcal (mostly carbs) on long-run and quality days, and do NOT run a deficit the day before a long run. Protein 185g protects lean mass.'
 )
 on conflict (id) do update set
@@ -37,5 +44,8 @@ on conflict (id) do update set
   maintenance_kcal = excluded.maintenance_kcal,
   deficit_kcal = excluded.deficit_kcal,
   weekly_loss_kg = excluded.weekly_loss_kg,
+  start_weight_kg = excluded.start_weight_kg,
+  start_date = excluded.start_date,
+  goal_weight_kg = excluded.goal_weight_kg,
   rationale = excluded.rationale,
   updated_at = now();
