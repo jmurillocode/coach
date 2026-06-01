@@ -1,7 +1,9 @@
 import { admin } from "./supabase";
 
 // Whoop OAuth + API helpers. Docs: https://developer.whoop.com
+// OAuth lives at the root; the REST data API (v2) lives under /developer.
 const WHOOP_BASE = "https://api.prod.whoop.com";
+const WHOOP_API_BASE = "https://api.prod.whoop.com/developer";
 const AUTH_URL = `${WHOOP_BASE}/oauth/oauth2/auth`;
 const TOKEN_URL = `${WHOOP_BASE}/oauth/oauth2/token`;
 
@@ -117,7 +119,7 @@ export async function whoopGet<T = unknown>(
 ): Promise<T> {
   const token = await getValidAccessToken();
   const qs = new URLSearchParams(query).toString();
-  const res = await fetch(`${WHOOP_BASE}${path}${qs ? `?${qs}` : ""}`, {
+  const res = await fetch(`${WHOOP_API_BASE}${path}${qs ? `?${qs}` : ""}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });

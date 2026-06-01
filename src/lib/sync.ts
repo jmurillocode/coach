@@ -72,10 +72,10 @@ export async function syncWhoop(daysBack = 14): Promise<SyncResult> {
   const db = admin();
 
   const [rec, slp, cyc, wko] = await Promise.all([
-    whoopGet<{ records: Recovery[] }>("/v1/recovery", { start: since, limit: "25" }),
-    whoopGet<{ records: Sleep[] }>("/v1/activity/sleep", { start: since, limit: "25" }),
-    whoopGet<{ records: Cycle[] }>("/v1/cycle", { start: since, limit: "25" }),
-    whoopGet<{ records: Workout[] }>("/v1/activity/workout", { start: since, limit: "25" }),
+    whoopGet<{ records: Recovery[] }>("/v2/recovery", { start: since, limit: "25" }),
+    whoopGet<{ records: Sleep[] }>("/v2/activity/sleep", { start: since, limit: "25" }),
+    whoopGet<{ records: Cycle[] }>("/v2/cycle", { start: since, limit: "25" }),
+    whoopGet<{ records: Workout[] }>("/v2/activity/workout", { start: since, limit: "25" }),
   ]);
 
   // Merge per-date metrics.
