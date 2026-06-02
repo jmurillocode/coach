@@ -12,22 +12,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "id and day_date required" }, { status: 400 });
   }
 
-  const { data, error } = await admin()
+  // No RETURNING/select — just update and use the affected-row count.
+  const { error, count } = await admin()
     .from("training_plan")
-    .update({ day_date, status: "modified" })
-    .eq("id", id)
-    .select()
-    .single();
+    .update({ day_date, status: "modified" }, { count: "exact" })
+    .eq("id", id);
 
   if (error) {
-    // 23505 = unique (day_date, session_type) collision
-    if ((error as any).code === "23505") {
+    const msg = error.message || "";
+    if ((error as any).code === "23505" || msg.toLowerCase().includes("duplicate")) {
       return NextResponse.json(
         { error: "That day already has a session of this type. Move or swap that one first." },
         { status: 409 }
       );
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, session: data });
+  if (!count) {
+    return NextResponse.json({ error: "Session not found." }, { status: 404 });
+  }
+  return NextResponse.json({ ok: true });
 }
