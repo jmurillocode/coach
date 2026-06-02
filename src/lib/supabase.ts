@@ -19,6 +19,10 @@ export function admin(): SupabaseClient {
 
   cached = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      // Bypass Next.js's Data Cache — always read fresh from the DB.
+      fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+    },
   });
   return cached;
 }
