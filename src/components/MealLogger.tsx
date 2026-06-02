@@ -32,6 +32,7 @@ export function MealLogger() {
   const [preview, setPreview] = useState<string | null>(null);
   const [payload, setPayload] = useState<{ data: string; media: string } | null>(null);
   const [text, setText] = useState("");
+  const [note, setNote] = useState("");
   const [mealType, setMealType] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<any | null>(null);
@@ -58,7 +59,7 @@ export function MealLogger() {
         res = await fetch("/api/food/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image_base64: payload.data, media_type: payload.media, meal_type: mealType || undefined }),
+          body: JSON.stringify({ image_base64: payload.data, media_type: payload.media, meal_type: mealType || undefined, user_note: note || undefined }),
         });
       } else {
         if (!text.trim()) return;
@@ -74,6 +75,7 @@ export function MealLogger() {
       setPreview(null);
       setPayload(null);
       setText("");
+      setNote("");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed");
@@ -90,18 +92,27 @@ export function MealLogger() {
       </div>
 
       {mode === "photo" ? (
-        <label className="card flex cursor-pointer flex-col items-center justify-center py-8 text-center">
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="" className="max-h-48 rounded-xl object-contain" />
-          ) : (
-            <>
-              <span className="text-3xl">📷</span>
-              <span className="mt-2 text-sm text-muted">Tap to photograph your meal</span>
-            </>
-          )}
-          <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onPick} />
-        </label>
+        <>
+          <label className="card flex cursor-pointer flex-col items-center justify-center py-8 text-center">
+            {preview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={preview} alt="" className="max-h-48 rounded-xl object-contain" />
+            ) : (
+              <>
+                <span className="text-3xl">📷</span>
+                <span className="mt-2 text-sm text-muted">Tap to photograph your meal</span>
+              </>
+            )}
+            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onPick} />
+          </label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+            placeholder="Add a note to sharpen the analysis (optional) — e.g. 'large bowl, cooked in olive oil, whole milk'"
+            className="w-full rounded-xl border border-edge bg-panel px-4 py-3 text-sm outline-none focus:border-accent"
+          />
+        </>
       ) : (
         <textarea
           value={text}
