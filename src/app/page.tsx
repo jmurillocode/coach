@@ -39,7 +39,10 @@ export default async function Home() {
             {phase ? ` · ${phase.split("—")[0].trim()}` : ""}
           </p>
         </div>
-        <Link href="/log" className="mlab text-accent">＋ check-in</Link>
+        <div className="flex items-center gap-4">
+          <RefreshBriefButton />
+          <Link href="/log" className="mlab text-accent">＋ check-in</Link>
+        </div>
       </header>
 
       {!d.configured && (
@@ -95,11 +98,8 @@ export default async function Home() {
 
       {/* Coach */}
       <section className="card-accent">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="mlab text-accent">Coach</span>
-          <RefreshBriefButton />
-        </div>
-        {d.brief ? <Markdown text={d.brief.body} /> : <p className="text-sm text-muted">No brief yet — tap refresh.</p>}
+        <span className="mlab mb-2 block text-accent">Coach</span>
+        {d.brief ? <Markdown text={d.brief.body} /> : <p className="text-sm text-muted">No brief yet — tap refresh up top.</p>}
       </section>
 
       {/* Nutrition mini */}

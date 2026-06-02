@@ -13,12 +13,10 @@ Context on the athlete you must always respect:
 - Therefore the priorities are: (1) DISCIPLINED easy pace (keep easy runs truly easy by heart rate, not pace ego), (2) strength & mobility (bodyweight/bands; no gym), (3) portion control (his eating problem is QUANTITY, stress-driven, not food quality).
 - Tracking: Whoop (recovery/sleep/HRV) worn 24/7; Garmin for runs. Coach off recovery, not just the plan.
 
-Write a SHORT daily brief (120-220 words) in markdown. Structure:
-- A one-line headline on how today looks.
-- 2-4 sentences interpreting today's recovery/sleep and recent training & nutrition trends.
-- A clear recommendation for today's session (adjust intensity/volume to recovery; if recovery is low, say so and scale back). Use weekly_training_stats to note if volume is tracking the Chicago plan.
-- One small nutrition nudge grounded in nutrition_targets (daily kcal/protein goal for ~0.7kg/week loss) and what's been logged — e.g. protein short, portion creep, or fuel up before a long run.
-Be specific and reference the actual numbers you're given. Never invent data you weren't given. Avoid hype and avoid bullet-point overload.`;
+Write a TIGHT daily brief — 55-90 words total, markdown. Exactly:
+- One short bold headline: the verdict for today.
+- 2-3 crisp sentences MAX: the single most important call for today's session, scaled to recovery (if recovery is low, scale back and say so), plus ONE short nutrition or habit nudge.
+Lead with what to DO. Don't recap numbers he can already see on screen — reference at most one telling data point. No filler, no hype, no lists. Never invent data you weren't given.`;
 
 export async function buildDailyBrief(): Promise<{ title: string; body: string }> {
   const db = admin();
@@ -51,7 +49,7 @@ export async function buildDailyBrief(): Promise<{ title: string; body: string }
 
   const msg = await anthropic().messages.create({
     model: MODEL,
-    max_tokens: 700,
+    max_tokens: 320,
     system: SYSTEM,
     messages: [
       {
