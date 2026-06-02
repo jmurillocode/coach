@@ -33,7 +33,7 @@ alter table meals add column if not exists title text;                        --
 -- Protein high to preserve lean mass in a deficit; carbs prioritised around training.
 insert into nutrition_targets (id, daily_kcal, protein_g, carbs_g, fat_g, maintenance_kcal, deficit_kcal, weekly_loss_kg, start_weight_kg, start_date, goal_weight_kg, rationale)
 values (
-  1, 2300, 185, 232, 70, 2950, 650, 0.7, 95, '2026-06-01', 85,
+  1, 2300, 185, 232, 70, 2950, 650, 0.7, 96.7, '2026-06-02', 85,
   'Ambitious-but-reasonable cut: ~0.7 kg/week. Eases as mileage peaks — add ~300-400 kcal (mostly carbs) on long-run and quality days, and do NOT run a deficit the day before a long run. Protein 185g protects lean mass.'
 )
 on conflict (id) do update set
@@ -49,3 +49,8 @@ on conflict (id) do update set
   goal_weight_kg = excluded.goal_weight_kg,
   rationale = excluded.rationale,
   updated_at = now();
+
+-- Seed the starting weigh-in (96.7 kg) only if no weight has been logged yet.
+insert into journal_entries (entry_at, body_weight_kg, note)
+select '2026-06-02T07:00:00Z', 96.7, 'Starting weigh-in'
+where not exists (select 1 from journal_entries where body_weight_kg is not null);

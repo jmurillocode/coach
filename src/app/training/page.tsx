@@ -1,7 +1,8 @@
 import { admin } from "@/lib/supabase";
 import { isConfigured } from "@/lib/data";
-import { getTodayNext, getWeekStats, getWeekPlan, getWeeklyVolumeSeries } from "@/lib/training";
+import { getTodayNext, getWeekStats, getWeekPlan, getWeeklyVolumeSeries, mondayOf } from "@/lib/training";
 import { MiniBars } from "@/components/charts";
+import { WeekPlanEditor } from "@/components/WeekPlanEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -113,17 +114,13 @@ export default async function Training() {
         </div>
       </section>
 
-      {/* Week plan */}
+      {/* Week plan — reschedulable */}
       <section className="card">
-        <span className="mlab mb-3 block">This week&apos;s plan</span>
-        <div className="space-y-3">
-          {weekPlan.map((s) => (
-            <div key={s.id} className="flex gap-3">
-              <span className="mlab w-8 shrink-0 pt-0.5">{new Date(s.day_date).toLocaleDateString(undefined, { weekday: "short" })}</span>
-              <div className="flex-1"><Session s={s} /></div>
-            </div>
-          ))}
+        <div className="mb-3 flex items-center justify-between">
+          <span className="mlab">This week&apos;s plan</span>
+          <span className="mlab">↔ tap to move a day</span>
         </div>
+        <WeekPlanEditor sessions={weekPlan} weekStart={mondayOf()} />
       </section>
 
       {/* Logged workouts */}
