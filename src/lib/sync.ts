@@ -71,11 +71,11 @@ export async function syncWhoop(daysBack = 14): Promise<SyncResult> {
   const since = new Date(Date.now() - daysBack * 86400_000).toISOString();
   const db = admin();
 
-  const [rec, slp, cyc, wko] = await Promise.all([
+  // Whoop = recovery/sleep/strain only. Workouts come from Garmin (accurate GPS).
+  const [rec, slp, cyc] = await Promise.all([
     whoopGet<{ records: Recovery[] }>("/v2/recovery", { start: since, limit: "25" }),
     whoopGet<{ records: Sleep[] }>("/v2/activity/sleep", { start: since, limit: "25" }),
     whoopGet<{ records: Cycle[] }>("/v2/cycle", { start: since, limit: "25" }),
-    whoopGet<{ records: Workout[] }>("/v2/activity/workout", { start: since, limit: "25" }),
   ]);
 
   // Merge per-date metrics.
@@ -127,35 +127,7 @@ export async function syncWhoop(daysBack = 14): Promise<SyncResult> {
     if (!error) daysUpserted++;
   }
 
-  // Workouts.
-  let workoutsUpserted = 0;
-  for (const w of wko.records ?? []) {
-    const dur =
-      w.end && w.start
-        ? Math.round((new Date(w.end).getTime() - new Date(w.start).getTime()) / 1000)
-        : null;
-    const dist = w.score?.distance_meter ?? null;
-    const pace =
-      dist && dur && dist > 0 ? Math.round((dur / (dist / 1000)) * 100) / 100 : null;
-    const { error } = await db.from("workouts").upsert(
-      {
-        external_id: String(w.id),
-        source: "whoop",
-        sport: SPORTS[w.sport_id ?? -1] ?? "workout",
-        start_time: w.start,
-        duration_s: dur,
-        distance_m: dist,
-        avg_pace_s_per_km: pace,
-        avg_hr: w.score?.average_heart_rate ?? null,
-        max_hr: w.score?.max_heart_rate ?? null,
-        elevation_gain_m: w.score?.altitude_gain_meter ?? null,
-        calories: w.score?.kilojoule ? Math.round(w.score.kilojoule / 4.184) : null,
-        raw: w as unknown as Record<string, unknown>,
-      },
-      { onConflict: "source,external_id" }
-    );
-    if (!error) workoutsUpserted++;
-  }
-
-  return { days_upserted: daysUpserted, workouts_upserted: workoutsUpserted, since };
+  // Workouts intentionally not synced from Whoop — Garmin is the workout source
+  // of truth (accurate GPS pace/splits), which avoids double-counting the same run.
+  return { days_upserted: daysUpserted, workouts_upserted: 0, since };
 }
