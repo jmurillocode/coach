@@ -1,6 +1,7 @@
 import { admin } from "./supabase";
 import { getWeeklyVolumeSeries, getWeekStats, mondayOf, type VolumeSeries, type WeekStats } from "./training";
 import { getTargets, type NutritionTargets } from "./nutrition";
+import { syncWhoop } from "./sync";
 
 const RUN_TYPES = ["easy", "long", "workout"];
 
@@ -74,6 +75,25 @@ export async function getDashboard(): Promise<Dashboard> {
         db.from("training_plan").select("day_date, session_type, planned_distance_km, title, target_pace").gte("day_date", weekStart).lte("day_date", weekEnd),
       ]);
 
+    // Auto-sync Whoop on load if today's recovery is missing and we haven't synced
+    // in the last 15 min — the 5:30 cron runs before Whoop scores the night.
+    let latestMetric = metric.data;
+    let recent14 = metrics14.data ?? [];
+    const lastUpd = latestMetric?.updated_at ? new Date(latestMetric.updated_at).getTime() : 0;
+    if ((!latestMetric || latestMetric.metric_date < today) && Date.now() - lastUpd > 15 * 60 * 1000) {
+      try {
+        await syncWhoop(3);
+        const [m2, r2] = await Promise.all([
+          db.from("daily_metrics").select("*").order("metric_date", { ascending: false }).limit(1).maybeSingle(),
+          db.from("daily_metrics").select("metric_date, recovery_score, hrv_rmssd_ms").order("metric_date", { ascending: false }).limit(14),
+        ]);
+        latestMetric = m2.data ?? latestMetric;
+        recent14 = r2.data ?? recent14;
+      } catch {
+        // token/timing issue — fall back to whatever we already have
+      }
+    }
+
     const todaysMeals = meals.data ?? [];
     const macros = todaysMeals.reduce(
       (acc, m) => ({
@@ -88,13 +108,13 @@ export async function getDashboard(): Promise<Dashboard> {
     return {
       configured: true,
       whoopConnected: Boolean(whoop.data),
-      latestMetric: metric.data ?? null,
+      latestMetric: latestMetric ?? null,
       brief: brief.data ?? null,
       todaysMeals,
       macros,
       upcoming: plan.data ?? [],
       recentWorkouts: workouts.data ?? [],
-      recentMetrics: (metrics14.data ?? []).slice().reverse(),
+      recentMetrics: recent14.slice().reverse(),
       volume,
       weekStats,
       plannedKm: volume.currentIndex >= 0 ? volume.weeks[volume.currentIndex]?.km ?? 0 : 0,
