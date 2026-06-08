@@ -91,12 +91,12 @@ export default async function Training() {
           {thisWeekPlanned > 0 && <span className="mlab">plan {thisWeekPlanned}km</span>}
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <Metric value={`${stats.distance_km}`} unit="km" />
+          <Metric value={`${stats.run_km}`} unit="run km" />
           <Metric value={`${Math.floor(stats.duration_min / 60)}:${(stats.duration_min % 60).toString().padStart(2, "0")}`} unit="hours" />
           <Metric value={`${stats.sessions}`} unit="sessions" />
-          <Metric value={stats.calories ? `${(stats.calories / 1000).toFixed(1)}k` : "—"} unit="kcal" />
+          <Metric value={`${stats.cross_min}`} unit="cross min" />
           <Metric value={stats.avg_hr ? `${stats.avg_hr}` : "—"} unit="avg hr" />
-          <Metric value={`${Math.round(stats.by_sport.running?.km ?? 0)}`} unit="run km" />
+          <Metric value={stats.calories ? `${(stats.calories / 1000).toFixed(1)}k` : "—"} unit="kcal" />
         </div>
       </section>
 

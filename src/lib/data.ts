@@ -43,7 +43,7 @@ export async function getDashboard(): Promise<Dashboard> {
     recentWorkouts: [],
     recentMetrics: [],
     volume: { weeks: [], currentIndex: -1 },
-    weekStats: { week_start: mondayOf(), distance_km: 0, duration_min: 0, calories: 0, avg_hr: null, sessions: 0, by_sport: {} },
+    weekStats: { week_start: mondayOf(), distance_km: 0, run_km: 0, cross_min: 0, duration_min: 0, calories: 0, avg_hr: null, sessions: 0, by_sport: {} },
     plannedKm: 0,
     plannedRunSessions: 0,
     todaySessions: [],

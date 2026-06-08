@@ -37,7 +37,7 @@ export default async function Home() {
   const phase = (d.todaySessions[0]?.details?.phase as string) || (d.upcoming[0]?.details?.phase as string) || "";
 
   // Training summary
-  const actualKm = d.weekStats.distance_km;
+  const actualKm = d.weekStats.run_km;
   const plannedKm = d.plannedKm;
   const todayMain =
     d.todaySessions.find((s: any) => ["easy", "long", "workout"].includes(s.session_type)) ?? d.todaySessions[0] ?? null;
@@ -107,7 +107,7 @@ export default async function Home() {
           <Bar value={actualKm} target={plannedKm} color="#4FD3E0" />
           <div className="mt-3 flex items-center justify-between text-xs">
             <span className="text-muted">
-              <span className="num text-dim">{d.weekStats.sessions}</span>/{d.plannedRunSessions} runs · {d.weekStats.avg_hr ? `${d.weekStats.avg_hr} avg hr` : "—"}
+              <span className="num text-dim">{d.weekStats.by_sport.running?.count ?? 0}</span>/{d.plannedRunSessions} runs · {d.weekStats.cross_min}min cross
             </span>
             <span className="text-dim">
               today: {todayMain ? todayMain.title : "rest"}

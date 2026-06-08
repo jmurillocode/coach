@@ -10,12 +10,16 @@ export function mondayOf(d = new Date()): string {
 export type WeekStats = {
   week_start: string;
   distance_km: number;
+  run_km: number;
+  cross_min: number;
   duration_min: number;
   calories: number;
   avg_hr: number | null;
   sessions: number;
   by_sport: Record<string, { km: number; count: number }>;
 };
+
+const NON_RUN = new Set(["cycling", "swimming", "rowing", "elliptical", "strength"]);
 
 export async function getWeekStats(weekStartISO?: string): Promise<WeekStats> {
   const start = weekStartISO ?? mondayOf();
@@ -33,12 +37,14 @@ export async function getWeekStats(weekStartISO?: string): Promise<WeekStats> {
     duration = 0,
     calories = 0,
     hrNum = 0,
-    hrDen = 0;
+    hrDen = 0,
+    crossDur = 0;
   const bySport: Record<string, { km: number; count: number }> = {};
   for (const x of w) {
     distance += Number(x.distance_m ?? 0);
     duration += Number(x.duration_s ?? 0);
     calories += Number(x.calories ?? 0);
+    if (x.sport && NON_RUN.has(x.sport)) crossDur += Number(x.duration_s ?? 0);
     if (x.avg_hr && x.duration_s) {
       hrNum += Number(x.avg_hr) * Number(x.duration_s);
       hrDen += Number(x.duration_s);
@@ -51,6 +57,8 @@ export async function getWeekStats(weekStartISO?: string): Promise<WeekStats> {
   return {
     week_start: start,
     distance_km: Math.round((distance / 1000) * 10) / 10,
+    run_km: Math.round((bySport.running?.km ?? 0) * 10) / 10,
+    cross_min: Math.round(crossDur / 60),
     duration_min: Math.round(duration / 60),
     calories: Math.round(calories),
     avg_hr: hrDen ? Math.round(hrNum / hrDen) : null,
