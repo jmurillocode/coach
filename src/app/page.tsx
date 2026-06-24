@@ -78,15 +78,18 @@ export default async function Home() {
             {!d.whoopConnected && <span className="mlab text-accent">connect Whoop →</span>}
           </div>
           {m ? (
-            <div className="flex items-center gap-5">
-              <Gauge value={m.recovery_score ?? 0} display={`${m.recovery_score ?? "—"}`} sub={z.word.toUpperCase()} color={z.color} size={104} />
-              <div className="grid flex-1 grid-cols-2 gap-x-4 gap-y-3">
+            <>
+              <div className="grid grid-cols-3 gap-1">
+                <RingStat label="Strain" value={m.day_strain != null ? Number(m.day_strain) : null} max={21} display={m.day_strain != null ? Number(m.day_strain).toFixed(1) : "—"} color="#C58BF0" />
+                <RingStat label="Recovery" value={m.recovery_score} max={100} display={`${m.recovery_score ?? "—"}`} color={z.color} />
+                <RingStat label="Sleep" value={m.sleep_performance} max={100} display={`${m.sleep_performance ?? "—"}`} color="#4FD3E0" />
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2 border-t border-edge pt-3">
                 <Stat label="hrv" value={m.hrv_rmssd_ms ? `${Math.round(m.hrv_rmssd_ms)}` : "—"} unit="ms" />
                 <Stat label="rest hr" value={m.resting_hr ? `${m.resting_hr}` : "—"} unit="bpm" />
-                <Stat label="sleep" value={m.sleep_performance ? `${m.sleep_performance}` : "—"} unit="%" />
                 <Stat label="slept" value={hhmm(m.sleep_duration_min)} unit="h" />
               </div>
-            </div>
+            </>
           ) : (
             <p className="text-sm text-muted">{d.whoopConnected ? "No recovery data yet — tap refresh." : "Connect Whoop to see your recovery."}</p>
           )}
@@ -145,6 +148,15 @@ export default async function Home() {
         {d.brief ? <Markdown text={d.brief.body} /> : <p className="text-sm text-muted">No brief yet — tap refresh up top.</p>}
       </section>
     </main>
+  );
+}
+
+function RingStat({ label, value, max, display, color }: { label: string; value: number | null; max: number; display: string; color: string }) {
+  return (
+    <div className="flex flex-col items-center">
+      <Gauge value={value ?? 0} max={max} display={display} color={color} numColor="#E8EDF2" size={92} stroke={7} />
+      <span className="mlab mt-1">{label}</span>
+    </div>
   );
 }
 
