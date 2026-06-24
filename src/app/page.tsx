@@ -75,7 +75,13 @@ export default async function Home() {
         <section className="card">
           <div className="mb-3 flex items-center justify-between">
             <span className="mlab">Recovery</span>
-            {!d.whoopConnected && <span className="mlab text-accent">connect Whoop →</span>}
+            {!d.whoopConnected ? (
+              <span className="mlab text-accent">connect Whoop →</span>
+            ) : (
+              <span className="mlab">
+                {m ? (m.metric_date === new Date().toISOString().slice(0, 10) ? "today" : `latest ${m.metric_date}`) : "no data"}
+              </span>
+            )}
           </div>
           {m ? (
             <>
