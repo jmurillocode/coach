@@ -66,12 +66,14 @@ export async function exchangeCode(code: string): Promise<void> {
 }
 
 async function refresh(refreshToken: string): Promise<TokenResponse> {
+  // Whoop's refresh grant requires scope "offline" (NOT the full read scopes,
+  // which it rejects as a 400 invalid_request). Docs: developer.whoop.com/docs/developing/oauth
   const tok = await postToken({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
     client_id: env("WHOOP_CLIENT_ID"),
     client_secret: env("WHOOP_CLIENT_SECRET"),
-    scope: WHOOP_SCOPES,
+    scope: "offline",
   });
   await storeToken(tok);
   return tok;
