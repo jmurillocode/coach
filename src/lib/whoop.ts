@@ -81,38 +81,52 @@ async function refresh(refreshToken: string): Promise<TokenResponse> {
 
 async function storeToken(tok: TokenResponse): Promise<void> {
   const expiresAt = new Date(Date.now() + tok.expires_in * 1000).toISOString();
-  await admin()
-    .from("integrations")
-    .upsert(
-      {
-        provider: "whoop",
-        access_token: tok.access_token,
-        refresh_token: tok.refresh_token,
-        expires_at: expiresAt,
-        scope: tok.scope,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "provider" }
-    );
+  const row: Record<string, unknown> = {
+    provider: "whoop",
+    access_token: tok.access_token,
+    expires_at: expiresAt,
+    scope: tok.scope,
+    updated_at: new Date().toISOString(),
+  };
+  // Only overwrite the refresh token if Whoop returned a new one — never wipe it.
+  if (tok.refresh_token) row.refresh_token = tok.refresh_token;
+  await admin().from("integrations").upsert(row, { onConflict: "provider" });
 }
 
 export async function getValidAccessToken(): Promise<string> {
-  const { data, error } = await admin()
+  const db = admin();
+  const { data, error } = await db
     .from("integrations")
-    .select("access_token, refresh_token, expires_at")
+    .select("access_token, refresh_token, expires_at, updated_at")
     .eq("provider", "whoop")
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("Whoop is not connected yet");
 
   const expiresAt = data.expires_at ? new Date(data.expires_at).getTime() : 0;
-  // Refresh if expiring within 60s.
-  if (Date.now() > expiresAt - 60_000) {
-    if (!data.refresh_token) throw new Error("No Whoop refresh token; reconnect");
-    const tok = await refresh(data.refresh_token);
+  if (Date.now() <= expiresAt - 90_000) return data.access_token as string;
+  if (!data.refresh_token) throw new Error("No Whoop refresh token; reconnect");
+
+  // Serialize refreshes: atomically "claim" the refresh via optimistic lock on
+  // updated_at. Only the claimer refreshes; concurrent callers wait and re-read.
+  const claim = await db
+    .from("integrations")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("provider", "whoop")
+    .eq("updated_at", data.updated_at)
+    .select("refresh_token")
+    .maybeSingle();
+
+  if (claim.data) {
+    const tok = await refresh(claim.data.refresh_token as string);
     return tok.access_token;
   }
-  return data.access_token as string;
+
+  // Another request is refreshing — wait briefly, then use the freshly stored token.
+  await new Promise((r) => setTimeout(r, 2500));
+  const re = await db.from("integrations").select("access_token").eq("provider", "whoop").maybeSingle();
+  if (re.data?.access_token) return re.data.access_token as string;
+  throw new Error("Whoop token unavailable after concurrent refresh");
 }
 
 export async function whoopGet<T = unknown>(
