@@ -1,7 +1,7 @@
 import { admin } from "@/lib/supabase";
 import { isConfigured } from "@/lib/data";
 import { getTodayNext, getWeekStats, getWeekPlan, getWeeklyVolumeSeries, mondayOf } from "@/lib/training";
-import { MiniBars } from "@/components/charts";
+import { WeekBars } from "@/components/WeekBars";
 import { WeekPlanEditor } from "@/components/WeekPlanEditor";
 
 export const dynamic = "force-dynamic";
@@ -63,8 +63,8 @@ export default async function Training() {
   ]);
   const phase = (today[0]?.details?.phase as string) || (weekPlan[0]?.details?.phase as string) || "";
   const recentWorkouts = recent.data ?? [];
-  const peak = volume.weeks.length ? Math.max(...volume.weeks.map((w) => w.km)) : 0;
   const thisWeekPlanned = volume.currentIndex >= 0 ? volume.weeks[volume.currentIndex]?.km ?? 0 : 0;
+  const weekPlanKm = Math.round(weekPlan.reduce((s, x) => s + Number(x.planned_distance_km ?? 0), 0));
 
   return (
     <main className="space-y-3 px-4 pt-6">
@@ -73,14 +73,10 @@ export default async function Training() {
         {phase && <p className="mlab mt-0.5">{phase} · Chicago Oct 11</p>}
       </header>
 
-      {/* Build arc */}
+      {/* Build arc — hover/tap a week for its planned km */}
       {volume.weeks.length > 0 && (
         <section className="card">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="mlab">The build → Chicago</span>
-            <span className="mlab">{peak}km peak</span>
-          </div>
-          <MiniBars data={volume.weeks.map((w) => w.km)} highlight={volume.currentIndex} />
+          <WeekBars weeks={volume.weeks} currentIndex={volume.currentIndex} />
         </section>
       )}
 
@@ -117,8 +113,8 @@ export default async function Training() {
       {/* Week plan — reschedulable */}
       <section className="card">
         <div className="mb-3 flex items-center justify-between">
-          <span className="mlab">This week&apos;s plan</span>
-          <span className="mlab">↔ tap to move a day</span>
+          <span className="mlab">This week&apos;s plan · {weekPlanKm} km</span>
+          <span className="mlab">↔ tap to move</span>
         </div>
         <WeekPlanEditor sessions={weekPlan} weekStart={mondayOf()} />
       </section>
