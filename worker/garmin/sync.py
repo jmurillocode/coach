@@ -134,8 +134,19 @@ def main() -> None:
     # logins with 429/CAPTCHA). Generate it locally with get_token.py.
     tokens = os.environ.get("GARMINTOKENS_BASE64", "").strip()
     if tokens:
+        import io
+        import base64
+        import tarfile
+        import tempfile
+
+        store = tempfile.mkdtemp()
+        with tarfile.open(fileobj=io.BytesIO(base64.b64decode(tokens)), mode="r:gz") as tar:
+            try:
+                tar.extractall(store, filter="data")  # py>=3.12
+            except TypeError:
+                tar.extractall(store)
         client = Garmin()
-        client.login(tokens)
+        client.login(store)
         print("Logged in via saved token.")
     else:
         client = Garmin(env("GARMIN_EMAIL"), env("GARMIN_PASSWORD"))
