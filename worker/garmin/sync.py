@@ -128,12 +128,20 @@ def upsert(rows: list[dict]) -> None:
 
 
 def main() -> None:
-    email = env("GARMIN_EMAIL")
-    password = env("GARMIN_PASSWORD")
     lookback = int(env("GARMIN_LOOKBACK", required=False, default="20"))
 
-    client = Garmin(email, password)
-    client.login()
+    # Prefer a saved session token (required in CI — Garmin blocks datacenter-IP
+    # logins with 429/CAPTCHA). Generate it locally with get_token.py.
+    tokens = os.environ.get("GARMINTOKENS_BASE64", "").strip()
+    if tokens:
+        client = Garmin()
+        client.login(tokens)
+        print("Logged in via saved token.")
+    else:
+        client = Garmin(env("GARMIN_EMAIL"), env("GARMIN_PASSWORD"))
+        client.login()
+        print("Logged in via email/password (works locally, not from CI).")
+
     activities = client.get_activities(0, lookback)
     print(f"Fetched {len(activities)} activities from Garmin.")
 

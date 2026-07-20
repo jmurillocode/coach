@@ -22,8 +22,9 @@ jobs:
 
       - name: Run Garmin sync
         env:
-          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
-          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          # Token auth (required in CI — Garmin blocks datacenter-IP logins).
+          # Generate with worker/garmin/get_token.py and store as a repo secret.
+          GARMINTOKENS_BASE64: ${{ secrets.GARMINTOKENS_BASE64 }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GARMIN_LOOKBACK: "20"

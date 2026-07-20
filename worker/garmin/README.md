@@ -28,21 +28,30 @@ python sync.py
 
 ## Run on a schedule (GitHub Action)
 
-`.github/workflows/garmin-sync.yml` runs this every 6 hours. Add these repo secrets
-(Settings → Secrets and variables → Actions):
+`.github/workflows/garmin-sync.yml` runs this every 6 hours. **Garmin blocks logins
+from CI IPs** (429 / CAPTCHA / 403), so CI uses a saved session token instead of a password:
 
-- `GARMIN_EMAIL`
-- `GARMIN_PASSWORD`
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+1. **Generate the token locally** (on your own machine / home internet):
+   ```bash
+   pip install garminconnect
+   python worker/garmin/get_token.py
+   ```
+   Enter your Garmin email/password (and MFA code if prompted). It prints a base64 token.
+2. **Add repo secrets** (Settings → Secrets and variables → Actions):
+   - `GARMINTOKENS_BASE64` — the token from step 1
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+3. Trigger the workflow from the **Actions** tab (`Run workflow`). It should log in
+   "via saved token" and sync your runs.
 
-Trigger it manually the first time from the Actions tab (`Run workflow`).
+The token lasts ~1 year — just re-run `get_token.py` and update the secret if the
+Action ever starts failing on auth again.
 
 ## Notes & gotchas
 
-- **Login challenges:** Garmin occasionally requires MFA/verification from new IPs (like GitHub's
-  runners). If a scheduled run fails on login, run `sync.py` once locally to clear the challenge, or
-  switch to token auth (dump a `garth` session and load it) — the `garminconnect` README shows how.
+- **Login challenges:** if the Action fails auth with 429/CAPTCHA/403, your token expired or was
+  never set — re-run `get_token.py` locally and update the `GARMINTOKENS_BASE64` secret. Never rely
+  on email/password in CI; Garmin blocks datacenter IPs.
 - **It only reads your data**, and writes only to your Supabase. Service-role key stays in secrets.
 - **Mapping:** running/cycling/swimming/walking/hiking/strength are normalised; anything else keeps
   Garmin's `typeKey`. Pace is computed from average speed (or distance/duration).
