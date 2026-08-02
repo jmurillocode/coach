@@ -9,6 +9,7 @@ type Meal = {
   title: string | null;
   meal_type: string | null;
   photo_url: string | null;
+  user_note: string | null;
   calories_est: number | null;
   protein_g: number | null;
   carbs_g: number | null;
@@ -31,16 +32,22 @@ export function MealsList({ meals }: { meals: Meal[] }) {
     router.refresh();
   }
 
-  async function save(id: string, patch: Record<string, unknown>) {
+  async function reanalyze(id: string, text: string): Promise<string | null> {
     setBusy(true);
-    await fetch(`/api/food/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
-    setBusy(false);
-    setEditing(null);
-    router.refresh();
+    try {
+      const res = await fetch(`/api/food/${id}/reanalyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const json = await res.json();
+      if (!res.ok) return json.error || "failed";
+      setEditing(null);
+      router.refresh();
+      return null;
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -64,48 +71,44 @@ export function MealsList({ meals }: { meals: Meal[] }) {
             <button onClick={() => setEditing(editing === m.id ? null : m.id)} className="px-1.5 text-muted hover:text-accent" aria-label="Edit">✎</button>
             <button onClick={() => del(m.id)} disabled={busy} className="px-1.5 text-muted hover:text-danger disabled:opacity-40" aria-label="Delete">🗑</button>
           </div>
-          {editing === m.id && <MealEdit meal={m} busy={busy} onSave={(p) => save(m.id, p)} onCancel={() => setEditing(null)} />}
+          {editing === m.id && <MealEdit meal={m} onReanalyze={(t) => reanalyze(m.id, t)} onCancel={() => setEditing(null)} />}
         </li>
       ))}
     </ul>
   );
 }
 
-function MealEdit({ meal, busy, onSave, onCancel }: { meal: Meal; busy: boolean; onSave: (p: Record<string, unknown>) => void; onCancel: () => void }) {
-  const [title, setTitle] = useState(meal.title ?? "");
-  const [kcal, setKcal] = useState(String(meal.calories_est ?? ""));
-  const [p, setP] = useState(String(Math.round(meal.protein_g ?? 0)));
-  const [c, setC] = useState(String(Math.round(meal.carbs_g ?? 0)));
-  const [f, setF] = useState(String(Math.round(meal.fat_g ?? 0)));
+function MealEdit({ meal, onReanalyze, onCancel }: { meal: Meal; onReanalyze: (text: string) => Promise<string | null>; onCancel: () => void }) {
+  const [text, setText] = useState(meal.user_note ?? meal.title ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function go() {
+    if (!text.trim()) return;
+    setBusy(true);
+    setError("");
+    const err = await onReanalyze(text.trim());
+    if (err) setError(err);
+    setBusy(false);
+  }
 
   return (
     <div className="mt-2 space-y-2 rounded-xl border border-edge bg-ink/40 p-3">
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Name" className="w-full rounded-lg border border-edge bg-panel px-3 py-2 text-sm outline-none focus:border-accent" />
-      <div className="grid grid-cols-4 gap-2">
-        <Num label="kcal" value={kcal} set={setKcal} />
-        <Num label="P" value={p} set={setP} />
-        <Num label="C" value={c} set={setC} />
-        <Num label="F" value={f} set={setF} />
-      </div>
+      <p className="mlab">Fix the description, then re-analyze</p>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={2}
+        className="w-full rounded-lg border border-edge bg-panel px-3 py-2 text-sm outline-none focus:border-accent"
+      />
+      {error && <p className="text-xs text-danger">{error}</p>}
       <div className="flex gap-2">
-        <button
-          disabled={busy}
-          onClick={() => onSave({ title, calories_est: Number(kcal) || 0, protein_g: Number(p) || 0, carbs_g: Number(c) || 0, fat_g: Number(f) || 0 })}
-          className="btn-primary flex-1 py-2 text-sm disabled:opacity-40"
-        >
-          Save
+        <button disabled={busy || !text.trim()} onClick={go} className="btn-primary flex-1 py-2 text-sm disabled:opacity-40">
+          {busy ? "Re-analyzing…" : "Re-analyze"}
         </button>
         <button onClick={onCancel} className="btn-ghost px-4 py-2 text-sm">Cancel</button>
       </div>
-    </div>
-  );
-}
-
-function Num({ label, value, set }: { label: string; value: string; set: (v: string) => void }) {
-  return (
-    <div>
-      <div className="mlab mb-0.5">{label}</div>
-      <input inputMode="numeric" value={value} onChange={(e) => set(e.target.value)} className="w-full rounded-lg border border-edge bg-panel px-2 py-1.5 text-sm outline-none focus:border-accent" />
+      <p className="text-[11px] text-muted">Or delete it (🗑 above) and log again.</p>
     </div>
   );
 }
