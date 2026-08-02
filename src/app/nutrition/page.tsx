@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getDayNutrition, getWeightProgress } from "@/lib/nutrition";
 import { isConfigured } from "@/lib/data";
 import { MealLogger } from "@/components/MealLogger";
+import { MealsList } from "@/components/MealsList";
 import { Gauge, ProgressBar, WeightTrend } from "@/components/charts";
 
 export const dynamic = "force-dynamic";
@@ -94,30 +95,7 @@ export default async function Nutrition() {
       {/* Today's meals */}
       <section className="card">
         <span className="mlab mb-3 block">Today&apos;s meals</span>
-        {n.meals.length === 0 ? (
-          <p className="text-sm text-muted">Nothing logged yet.</p>
-        ) : (
-          <ul className="space-y-3">
-            {n.meals.map((m) => (
-              <li key={m.id} className="flex items-center gap-3">
-                {m.photo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={m.photo_url} alt="" className="h-11 w-11 rounded-xl object-cover" />
-                ) : (
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-edge text-muted">✎</div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm">{m.title ?? m.ai_items?.[0]?.name ?? m.meal_type ?? "Meal"}</p>
-                  <p className="text-xs text-muted">
-                    <span className="num">{m.calories_est ?? "?"}</span> kcal · <span className="num">{Math.round(m.protein_g ?? 0)}</span>g P ·{" "}
-                    <span className={m.portion_assessment === "large" || m.portion_assessment === "very_large" ? "text-warn" : ""}>{m.portion_assessment ?? "—"}</span>
-                  </p>
-                </div>
-                <span className="num text-xs text-muted">{new Date(m.eaten_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <MealsList meals={n.meals} />
       </section>
     </main>
   );

@@ -100,10 +100,10 @@ export function MealLogger() {
             ) : (
               <>
                 <span className="text-3xl">📷</span>
-                <span className="mt-2 text-sm text-muted">Tap to photograph your meal</span>
+                <span className="mt-2 text-sm text-muted">Tap to add a photo — camera or gallery</span>
               </>
             )}
-            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onPick} />
+            <input type="file" accept="image/*" className="hidden" onChange={onPick} />
           </label>
           <textarea
             value={note}
