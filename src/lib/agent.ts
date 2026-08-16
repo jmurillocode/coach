@@ -14,6 +14,8 @@ You can READ his live data (given below) and you can MODIFY his training plan us
 - Respect his running days (Mon/Wed/Thu/Sat/Sun) and the rule that each day can hold at most one session of a given type.
 - Be conservative and explain WHY you changed something. Don't rebuild the whole plan unless asked — make targeted edits.
 - When he asks to move a session, change a distance/pace, swap a workout, or scale a week up/down, do it with the tools, then confirm in plain language what you changed.
+- To REBUILD one or more whole weeks: call get_sessions to see the range, then delete_range to clear it in ONE call, then add_sessions to insert the new sessions in ONE bulk call. NEVER delete or add sessions one at a time for a rebuild.
+- CRITICAL: to perform any action you MUST emit the tool call in the same turn. Never reply "now deleting…" or "about to update…" without actually calling the tool — that does nothing. Act, then report what you did.
 - If he just wants advice, answer directly — don't touch the plan.
 Keep replies tight and practical. Reference his actual numbers when relevant.`;
 
@@ -68,11 +70,48 @@ const TOOLS = [
   },
   {
     name: "delete_session",
-    description: "Delete a session by id.",
+    description: "Delete a single session by id.",
     input_schema: {
       type: "object",
       properties: { id: { type: "string" } },
       required: ["id"],
+    },
+  },
+  {
+    name: "delete_range",
+    description:
+      "Delete ALL sessions between two dates (inclusive) in one call. Use this to clear weeks before a rebuild — never delete sessions one-by-one.",
+    input_schema: {
+      type: "object",
+      properties: { start_date: { type: "string" }, end_date: { type: "string" } },
+      required: ["start_date", "end_date"],
+    },
+  },
+  {
+    name: "add_sessions",
+    description:
+      "Bulk-insert many sessions at once. Use this to build weeks after delete_range. Each session needs day_date, session_type, title; distance/pace/note optional.",
+    input_schema: {
+      type: "object",
+      properties: {
+        sessions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              day_date: { type: "string" },
+              session_type: { type: "string", enum: ["easy", "long", "workout", "strength", "cross", "rest"] },
+              title: { type: "string" },
+              planned_distance_km: { type: "number" },
+              planned_duration_min: { type: "number" },
+              target_pace: { type: "string" },
+              coach_note: { type: "string" },
+            },
+            required: ["day_date", "session_type", "title"],
+          },
+        },
+      },
+      required: ["sessions"],
     },
   },
 ];
@@ -144,6 +183,27 @@ async function executeTool(name: string, input: any, actions: string[]): Promise
       actions.push(`deleted session ${input.id}`);
       return { ok: true };
     }
+    if (name === "delete_range") {
+      const { error, count } = await db
+        .from("training_plan")
+        .delete({ count: "exact" })
+        .gte("day_date", input.start_date)
+        .lte("day_date", input.end_date);
+      if (error) return { error: error.message };
+      actions.push(`cleared ${count ?? 0} sessions ${input.start_date}→${input.end_date}`);
+      return { ok: true, deleted: count ?? 0 };
+    }
+    if (name === "add_sessions") {
+      const list = (input.sessions ?? []).map((x: any) => ({ ...x, status: "modified" }));
+      if (!list.length) return { error: "no sessions provided" };
+      const { error } = await db.from("training_plan").insert(list);
+      if (error) {
+        if ((error as any).code === "23505") return { error: "One or more days already have a session of that type — clear the range first with delete_range." };
+        return { error: error.message };
+      }
+      actions.push(`added ${list.length} sessions`);
+      return { ok: true, added: list.length };
+    }
     return { error: `unknown tool ${name}` };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "tool error" };
@@ -156,7 +216,7 @@ export async function runAgent(history: ChatMsg[], systemExtra = ""): Promise<{ 
   const messages: any[] = history.map((m) => ({ role: m.role, content: m.content }));
   const actions: string[] = [];
 
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 10; i++) {
     const resp = await anthropic().messages.create({
       model: MODEL,
       max_tokens: 1500,
