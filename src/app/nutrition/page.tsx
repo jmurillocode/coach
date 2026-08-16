@@ -1,65 +1,36 @@
 import Link from "next/link";
-import { getDayNutrition, getWeightProgress } from "@/lib/nutrition";
+import { getWeightProgress } from "@/lib/nutrition";
 import { isConfigured } from "@/lib/data";
-import { MealLogger } from "@/components/MealLogger";
-import { MealsList } from "@/components/MealsList";
-import { Gauge, ProgressBar, WeightTrend } from "@/components/charts";
+import { WeightTrend } from "@/components/charts";
+import { WeightLog } from "@/components/WeightLog";
 
 export const dynamic = "force-dynamic";
 
-export default async function Nutrition() {
+export default async function Weight() {
   if (!isConfigured()) {
     return (
       <main className="px-4 pt-6">
-        <h1 className="text-2xl font-semibold">Nutrition</h1>
+        <h1 className="text-2xl font-semibold">Weight</h1>
         <p className="mt-4 text-sm text-muted">Configure the app first (see SETUP.md).</p>
       </main>
     );
   }
 
-  const [n, wp] = await Promise.all([getDayNutrition(), getWeightProgress()]);
-  const t = n.targets;
-  const over = n.consumed.kcal > t.daily_kcal;
+  const wp = await getWeightProgress();
 
   return (
     <main className="space-y-3 px-4 pt-6">
       <header>
-        <h1 className="text-2xl font-semibold">Nutrition</h1>
-        <p className="mlab mt-0.5">target {t.daily_kcal.toLocaleString()} kcal · ~{t.weekly_loss_kg}kg/wk</p>
+        <h1 className="text-2xl font-semibold">Weight</h1>
+        <p className="mlab mt-0.5">{wp.startKg}kg → goal {wp.goalKg}kg · Chicago Oct 11</p>
       </header>
 
-      {/* Calorie ring */}
-      <section className="card flex items-center gap-5">
-        <Gauge
-          value={n.consumed.kcal}
-          max={t.daily_kcal}
-          display={`${Math.round(n.consumed.kcal)}`}
-          sub={`/ ${t.daily_kcal}`}
-          color={over ? "#F5B544" : "#46E5A0"}
-          numColor="#E8EDF2"
-          size={108}
-        />
-        <div className="flex-1">
-          <div className="mlab">{n.remaining_kcal >= 0 ? "remaining" : "over"}</div>
-          <div className="num text-3xl" style={{ color: over ? "#F5B544" : "#46E5A0" }}>{Math.abs(n.remaining_kcal).toLocaleString()}</div>
-          <div className="mt-1 text-xs text-muted">{over ? "above target today" : "kcal left today"}</div>
-        </div>
-      </section>
-
-      {/* Macros */}
-      <section className="card space-y-3">
-        <span className="mlab">Macros</span>
-        <ProgressBar label="protein" value={n.consumed.protein} target={t.protein_g} color="#4FD3E0" />
-        <ProgressBar label="carbs" value={n.consumed.carbs} target={t.carbs_g} color="#F5B544" />
-        <ProgressBar label="fat" value={n.consumed.fat} target={t.fat_g} color="#C58BF0" />
-      </section>
-
-      {/* Weight progress */}
+      {/* Current + goal */}
       <section className="card">
         <div className="mb-3 flex items-start justify-between">
           <div>
-            <span className="mlab">Weight</span>
-            <div className="num text-3xl">
+            <span className="mlab">Latest</span>
+            <div className="num text-4xl">
               {wp.latest ? wp.latest.kg.toFixed(1) : wp.startKg.toFixed(1)}
               <span className="ml-1 text-sm font-medium text-muted" style={{ fontFamily: "var(--font-body)" }}>kg</span>
             </div>
@@ -76,26 +47,20 @@ export default async function Nutrition() {
         </div>
         <WeightTrend series={wp.series} goalStart={wp.goalStart} goalEnd={wp.goalEnd} />
         <div className="mt-2 flex justify-between text-[11px] text-muted">
-          <span>{wp.startKg}kg · Jun 1</span>
-          <span className="text-accent">— — goal {wp.goalKg}kg · Oct 11</span>
+          <span>{wp.startKg}kg · start</span>
+          <span className="text-accent">— — goal {wp.goalKg}kg</span>
         </div>
+      </section>
+
+      {/* Log */}
+      <section className="card">
+        <span className="mlab mb-3 block">Log weight</span>
+        <WeightLog latest={wp.latest?.kg ?? null} />
         {wp.series.length === 0 && (
           <p className="mt-2 text-xs text-muted">
-            Log your weight in a <Link href="/log" className="text-accent">check-in</Link> to start the trend.
+            Weigh in daily under the same conditions (right after waking). The <Link href="/history" className="text-accent">trend</Link> is the signal, not any single day.
           </p>
         )}
-      </section>
-
-      {/* Logger */}
-      <section className="card">
-        <span className="mlab mb-3 block">Log a meal</span>
-        <MealLogger />
-      </section>
-
-      {/* Today's meals */}
-      <section className="card">
-        <span className="mlab mb-3 block">Today&apos;s meals</span>
-        <MealsList meals={n.meals} />
       </section>
     </main>
   );

@@ -15,7 +15,7 @@ Context on the athlete you must always respect:
 
 Write a TIGHT daily brief — 55-90 words total, markdown. Exactly:
 - One short bold headline: the verdict for today.
-- 2-3 crisp sentences MAX: the single most important call for today's session, scaled to recovery (if recovery is low, scale back and say so), plus ONE short nutrition or habit nudge.
+- 2-3 crisp sentences MAX: the single most important call for today's session, scaled to recovery (if recovery is low, scale back and say so), plus ONE short fuelling or weight-trend nudge (do NOT mention calorie/meal logging — it's not tracked).
 Lead with what to DO. Don't recap numbers he can already see on screen — reference at most one telling data point. No filler, no hype, no lists. Never invent data you weren't given.`;
 
 export async function buildDailyBrief(): Promise<{ title: string; body: string }> {

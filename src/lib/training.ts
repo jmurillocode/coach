@@ -104,6 +104,24 @@ export async function getWeeklyVolumeSeries(): Promise<VolumeSeries> {
   return { weeks, currentIndex };
 }
 
+// Rolling next 7 days (today .. today+6) — forward-looking, not the calendar week.
+export function next7Dates(): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < 7; i++) out.push(new Date(Date.now() + i * 86400_000).toISOString().slice(0, 10));
+  return out;
+}
+
+export async function getNext7Plan() {
+  const dates = next7Dates();
+  const { data } = await admin()
+    .from("training_plan")
+    .select("*")
+    .gte("day_date", dates[0])
+    .lte("day_date", dates[6])
+    .order("day_date", { ascending: true });
+  return data ?? [];
+}
+
 export async function getWeekPlan(weekStartISO?: string) {
   const start = weekStartISO ?? mondayOf();
   const endDate = new Date(`${start}T00:00:00.000Z`);

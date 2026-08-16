@@ -1,6 +1,6 @@
 import { admin } from "@/lib/supabase";
 import { isConfigured } from "@/lib/data";
-import { getTodayNext, getWeekStats, getWeekPlan, getWeeklyVolumeSeries, mondayOf } from "@/lib/training";
+import { getTodayNext, getWeekStats, getNext7Plan, next7Dates, getWeeklyVolumeSeries } from "@/lib/training";
 import { WeekBars } from "@/components/WeekBars";
 import { WeekPlanEditor } from "@/components/WeekPlanEditor";
 
@@ -57,7 +57,7 @@ export default async function Training() {
   const [{ today, tomorrow }, stats, weekPlan, volume, recent] = await Promise.all([
     getTodayNext(),
     getWeekStats(),
-    getWeekPlan(),
+    getNext7Plan(),
     getWeeklyVolumeSeries(),
     admin().from("workouts").select("*").order("start_time", { ascending: false }).limit(6),
   ]);
@@ -113,10 +113,10 @@ export default async function Training() {
       {/* Week plan — reschedulable */}
       <section className="card">
         <div className="mb-3 flex items-center justify-between">
-          <span className="mlab">This week&apos;s plan · {weekPlanKm} km</span>
+          <span className="mlab">Next 7 days · {weekPlanKm} km</span>
           <span className="mlab">↔ tap to move</span>
         </div>
-        <WeekPlanEditor sessions={weekPlan} weekStart={mondayOf()} />
+        <WeekPlanEditor sessions={weekPlan} moveDates={next7Dates()} />
       </section>
 
       {/* Logged workouts */}

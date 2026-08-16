@@ -18,16 +18,6 @@ function hhmm(min: number | null): string {
   return `${Math.floor(min / 60)}:${(min % 60).toString().padStart(2, "0")}`;
 }
 
-function Bar({ value, target, color }: { value: number; target: number; color: string }) {
-  const pct = target > 0 ? Math.min(100, (value / target) * 100) : 0;
-  const over = value > target;
-  return (
-    <div className="h-2 overflow-hidden rounded-full bg-edge">
-      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: over ? "#F5B544" : color }} />
-    </div>
-  );
-}
-
 export default async function Home() {
   const d = await getDashboard();
   const hr = new Date().getHours();
@@ -41,11 +31,6 @@ export default async function Home() {
   const plannedKm = d.plannedKm;
   const todayMain =
     d.todaySessions.find((s: any) => ["easy", "long", "workout"].includes(s.session_type)) ?? d.todaySessions[0] ?? null;
-
-  // Nutrition summary
-  const kcal = Math.round(d.macros.calories);
-  const target = d.targets.daily_kcal;
-  const remaining = target - kcal;
 
   return (
     <main className="space-y-3 px-4 pt-6">
@@ -126,34 +111,22 @@ export default async function Home() {
         </section>
       </Link>
 
-      {/* NUTRITION */}
-      <Link href="/nutrition" className="block">
-        <section className="card">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="mlab">Nutrition · today</span>
-            <span className="mlab text-accent">open →</span>
-          </div>
-          <div className="mb-1 flex items-baseline gap-2">
-            <span className="num text-3xl">{kcal.toLocaleString()}</span>
-            <span className="text-sm text-muted">/ {target.toLocaleString()} kcal</span>
-            <span className={`ml-auto num text-sm ${remaining < 0 ? "text-warn" : "text-accent"}`}>
-              {remaining < 0 ? `${Math.abs(remaining)} over` : `${remaining} left`}
-            </span>
-          </div>
-          <Bar value={kcal} target={target} color="#46E5A0" />
-          <div className="mt-3 flex items-center justify-between text-xs text-muted">
-            <span><span className="num text-dim">{Math.round(d.macros.protein)}</span>/{d.targets.protein_g}g protein</span>
-            <span><span className="num text-dim">{Math.round(d.macros.carbs)}</span>g C · <span className="num text-dim">{Math.round(d.macros.fat)}</span>g F</span>
-          </div>
-        </section>
-      </Link>
-
       {/* COACH */}
       <section className="card-accent">
         <span className="mlab mb-2 block text-accent">Coach</span>
         {d.brief ? <Markdown text={d.brief.body} /> : <p className="text-sm text-muted">No brief yet — tap refresh up top.</p>}
       </section>
     </main>
+  );
+}
+
+function Bar({ value, target, color }: { value: number; target: number; color: string }) {
+  const pct = target > 0 ? Math.min(100, (value / target) * 100) : 0;
+  const over = value > target;
+  return (
+    <div className="h-2 overflow-hidden rounded-full bg-edge">
+      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: over ? "#F5B544" : color }} />
+    </div>
   );
 }
 

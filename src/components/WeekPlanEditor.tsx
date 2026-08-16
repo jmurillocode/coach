@@ -6,19 +6,20 @@ import { useRouter } from "next/navigation";
 const DOT: Record<string, string> = {
   easy: "#46E5A0", long: "#4FD3E0", workout: "#F5B544", strength: "#C58BF0", cross: "#8A949E", rest: "#3A434D",
 };
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export function WeekPlanEditor({ sessions, weekStart }: { sessions: any[]; weekStart: string }) {
+function dow(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "short", timeZone: "UTC" });
+}
+function dayNum(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", timeZone: "UTC" });
+}
+
+// Renders the given sessions with reschedule controls; move targets are `moveDates`.
+export function WeekPlanEditor({ sessions, moveDates }: { sessions: any[]; moveDates: string[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-
-  const weekDates = DAYS.map((_, i) => {
-    const d = new Date(`${weekStart}T00:00:00.000Z`);
-    d.setUTCDate(d.getUTCDate() + i);
-    return d.toISOString().slice(0, 10);
-  });
 
   async function move(id: string, day_date: string) {
     setBusy(true);
@@ -40,15 +41,16 @@ export function WeekPlanEditor({ sessions, weekStart }: { sessions: any[]; weekS
     }
   }
 
+  if (!sessions.length) return <p className="text-sm text-muted">Nothing planned in the next 7 days.</p>;
+
   return (
     <div className="space-y-3">
       {sessions.map((s) => {
-        const wd = (new Date(`${s.day_date}T00:00:00.000Z`).getUTCDay() + 6) % 7;
         const open = openId === s.id;
         return (
           <div key={s.id}>
             <div className="flex items-center gap-3">
-              <span className="mlab w-8 shrink-0">{DAYS[wd]}</span>
+              <span className="mlab w-8 shrink-0">{dow(s.day_date)}</span>
               <span className="flex flex-1 items-center gap-2 text-sm">
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: DOT[s.session_type] ?? "#8A949E" }} />
                 <span className="truncate">{s.title ?? s.session_type}</span>
@@ -59,16 +61,16 @@ export function WeekPlanEditor({ sessions, weekStart }: { sessions: any[]; weekS
             </div>
             {open && (
               <div className="mt-2 flex flex-wrap gap-1 pl-11">
-                {DAYS.map((d, i) => (
+                {moveDates.map((d) => (
                   <button
                     key={d}
-                    disabled={busy || i === wd}
-                    onClick={() => move(s.id, weekDates[i])}
+                    disabled={busy || d === s.day_date}
+                    onClick={() => move(s.id, d)}
                     className={`rounded-lg px-2.5 py-1.5 text-xs ${
-                      i === wd ? "bg-edge text-white" : "border border-edge text-muted hover:border-accent hover:text-accent"
+                      d === s.day_date ? "bg-edge text-white" : "border border-edge text-muted hover:border-accent hover:text-accent"
                     } disabled:opacity-40`}
                   >
-                    {d}
+                    {dayNum(d)}
                   </button>
                 ))}
               </div>
